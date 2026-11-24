@@ -31,6 +31,22 @@ h1{font-size:15px;font-weight:600;margin:0 auto 0 0}
 .chips button[aria-pressed="true"]{border-color:var(--ink);color:var(--ink);font-weight:500}
 .grid{display:grid;grid-template-columns:repeat(12,1fr);gap:16px}
 .card{background:var(--card);border-radius:24px;padding:20px;min-width:0}
+/* ===== ลูกเล่น Hover: เอาเมาส์ชี้การ์ดแล้วการ์ดนั้นขยาย + การ์ดอื่นหรี่ลง =====
+   วิธีแก้เอง:
+   - ขยายมาก/น้อย      -> แก้ scale(1.04) ในกฎ ".card:hover" (1 = ไม่ขยาย)
+   - การ์ดกว้างเต็มแถว -> แก้ scale ใน ".card.s12:hover" (ใช้ค่าน้อยกว่า ไม่งั้นล้นขอบ)
+   - หรี่มาก/น้อย      -> แก้ brightness(.7) (1 = ไม่หรี่, 0 = ดำสนิท) และ opacity(.65)
+   - ความเร็ว          -> แก้ .25s ใน transition
+   - ปิดลูกเล่นทั้งหมด -> ลบบล็อกนี้ทิ้งทั้งก้อน (ถึงบรรทัดที่เขียนว่า "จบ Hover") */
+@media (hover:hover){
+ .card{transition:transform .25s ease,filter .25s ease,opacity .25s ease,box-shadow .25s ease;position:relative}
+ .card:hover{transform:scale(1.04);z-index:5;box-shadow:0 16px 36px rgba(0,0,0,.22)}
+ .card.s12:hover,.card.dnav:hover{transform:scale(1.01)}
+ /* การ์ดอื่นในหน้าเดียวกันที่ไม่ได้ถูกชี้ -> หรี่ลง (ใช้ :has จึงต้องเป็นเบราว์เซอร์รุ่นใหม่) */
+ :is(.grid,.dgrid,.dcol):has(.card:hover) .card:not(:hover){filter:brightness(.7);opacity:.65}
+}
+@media (prefers-reduced-motion:reduce){.card{transition:none}.card:hover{transform:none}}
+/* จบ Hover */
 .card h2{font-size:15px;font-weight:600;margin:0 0 12px}
 .s3{grid-column:span 3}.s4{grid-column:span 4}.s5{grid-column:span 5}.s6{grid-column:span 6}.s7{grid-column:span 7}.s8{grid-column:span 8}
 .stat{display:flex;flex-direction:column;gap:6px;min-height:170px}
@@ -38,12 +54,11 @@ h1{font-size:15px;font-weight:600;margin:0 auto 0 0}
 .stat .lbl{font-weight:500}.stat .num{font-size:44px;font-weight:600;line-height:1.1;margin-top:auto}.stat .sub{color:var(--mute);font-size:12.5px}
 .stat .num .unit{font-size:16px;font-weight:400;color:var(--mute)} /* ขนาด/สีของหน่วย 'ตัว' */
 .bar{height:6px;border-radius:9px;background:rgba(127,127,127,.25);overflow:hidden}.bar i{display:block;height:100%;background:var(--ink);border-radius:9px}
-/* ===== แถบ % แนวตั้ง (การ์ด "แผนทั้งหมด") =====
-   .vbar  = รางสีเทา วางชิดขวาของการ์ด (แก้ right/top/bottom เพื่อย้ายตำแหน่ง, width เพื่อปรับความหนา)
-   .vbar i = แท่งสีเข้ม ความสูงกำหนดจาก % ในโค้ด JS (style="height:..%") และงอกขึ้นจากด้านล่าง */
-.stat.vert{position:relative}
-.vbar{position:absolute;right:22px;top:56px;bottom:22px;width:10px;border-radius:9px;background:rgba(127,127,127,.25);overflow:hidden;display:flex;align-items:flex-end}
-.vbar i{display:block;width:100%;background:var(--ink);border-radius:9px}
+/* ===== แถบ % แนวนอน + ข้อความ "เสร็จ" (การ์ด "แผนทั้งหมด") =====
+   .bar.big      = แถบความคืบหน้า ปรับความหนาที่ height (ตอนนี้ 14px)
+   .stat .donetxt = ข้อความ "เสร็จ xx%" ปรับขนาดที่ font-size (ตอนนี้ 24px) */
+.bar.big{height:14px}
+.stat .donetxt{font-size:24px;font-weight:600;color:var(--ink);line-height:1.2}
 .latest{text-align:center;display:flex;flex-direction:column;align-items:center;gap:4px}
 .avatar{width:64px;height:64px;border-radius:50%;background:var(--mint);display:grid;place-items:center;font-weight:600;font-size:20px;color:var(--green)}
 .latest .tag{font-weight:600;font-size:16px}.latest .d{color:var(--mute);font-size:12.5px;max-width:100%}
@@ -187,7 +202,7 @@ function plan(){
   if(!x.items.length)return`<details class="pc"><summary>${x.p}<small>${d===T?"ไม่มีแผนวันนี้":"ไม่มีแผนในวันที่เลือก"}</small></summary></details>`;
   const groups=PTY.map((t,k)=>{if(st.pty>=0&&st.pty!==k)return"";const g=x.items.filter(it=>it.ty===k);
    return`<div class="tg"><span class="chip">${t.s}</span>${t.n}<small>${g.length} รายการ · ทำแล้ว ${g.filter(it=>it.done).length}</small></div>`+(g.length?`<div class="prow head"><span>#</span><span>Tag</span><span>รายละเอียด</span><span>ทำล่าสุด</span><span>ครบกำหนด</span><span>สถานะ</span></div>`+g.map(it=>{const r=it.r;
-    return`<div class="prow"><span class="n">${it.n}</span><b>${esc(it.tg)}</b><span>${esc(it.d||"–")}<span class="sm">${esc(it.lo||"")}${it.fl?" · ชั้น "+esc(it.fl):""}</span></span><span>${fmt(r&&r.in)}</span><span>${fmt(r&&r.nx)}${r&&r.nx?`<span class="sm">${dueText(r)}</span>`:""}</span>${it.done?'<span class="chip ok">ทำแล้ว</span>':it.late?'<span class="chip over">ค้าง</span>':'<span class="chip soon">รอทำ</span>'}</div>`}).join(""):'<div class="nil">ไม่มีรายการ</div>')}).join("");
+    return`<div class="prow"><span class="n">${it.n}</span><b>${esc(it.tg)}</b><span>${esc(it.d||"–")}<span class="sm">${esc(it.lo||"")}${it.fl?" · ชั้น "+esc(it.fl):""}</span></span><span>${fmt(r&&r.in)}</span><span>${fmt(r&&r.nx)}${r&&r.nx?`<span class="sm">${dueText(r)}</span>`:""}</span>${it.done?'<span class="chip ok">Completed</span>':it.late?'<span class="chip over">Pending</span>':'<span class="chip soon">รอทำ</span>'}</div>`}).join(""):'<div class="nil">ไม่มีรายการ</div>')}).join("");
   return`<details class="pc" open><summary>${x.p}<small>${x.items.length} รายการ · ทำแล้ว ${dn}</small><div class="bar"><i style="width:${pc}%"></i></div></summary>${groups}</details>`}).join("");
 // ================= หน้า "แผน" : การ์ดสรุปด้านบน 4 ใบ =================
  // วิธีแก้ไขเอง:
@@ -195,13 +210,13 @@ function plan(){
  //  - เปลี่ยนชื่อหัวการ์ด           -> แก้ข้อความใน <div class="lbl">...</div> ของการ์ดนั้น
  //  - สลับตำแหน่งการ์ด              -> ย้ายบรรทัด <section class="card stat ..."> ขึ้น/ลง (ลำดับในโค้ด = ลำดับบนจอ)
  //  - เปลี่ยนสีการ์ด                -> เปลี่ยนคำ gray / mint / blue ใน class (สีกำหนดใน CSS ที่ .stat.gray/.mint/.blue)
- //  - แถบ % แนวตั้ง                 -> ความสูงมาจาก ${pct}% ; ตำแหน่ง/ความหนาแก้ใน CSS ที่ .vbar
+ //  - แถบ % แนวนอน                 -> ความกว้างมาจาก ${pct}% ; ความหนาแก้ใน CSS ที่ .bar.big, ขนาดคำว่า "เสร็จ" แก้ที่ .donetxt
  //  - "ค้างอยู่" แสดงเมื่อวันที่แผนผ่านมาแล้ว, "กำลังดำเนินการ" แสดงเมื่อเป็นวันนี้/อนาคต (เงื่อนไข d<T)
  // ตัวแปรที่ใช้: all.length=แผนทั้งหมด, done=ทำแล้ว, pend=ยังไม่ทำ, pct=เปอร์เซ็นต์ที่เสร็จ
  const UNIT="ตัว";
  return`<div class="grid">
  <section class="card s12 dnav" style="grid-column:span 12"><button class="ib" data-nav="prev" aria-label="วันก่อนหน้า" ${i<=0?"disabled":""}>‹</button><div class="big">${longDate(d)}<small>${d===T?"วันนี้":d<T?"ผ่านมาแล้ว":"แผนล่วงหน้า"} · แผนที่ ${i+1} จาก ${ds.length} วัน</small></div><button class="ib" data-nav="next" aria-label="วันถัดไป" ${i>=ds.length-1?"disabled":""}>›</button><button class="btn" data-nav="today" style="margin:0">วันนี้</button><div class="strip">${strip}</div></section>
- <section class="card stat gray s3 vert"><div class="lbl">แผนทั้งหมด${st.plant?" · "+st.plant:" · ทุกสถานที่"}</div><div class="num">${all.length} <small class="unit">${UNIT}</small></div><div class="vbar" title="เสร็จ ${pct}%"><i style="height:${pct}%"></i></div><div class="sub">เสร็จ ${pct}%</div></section>
+ <section class="card stat gray s3"><div class="lbl">แผนทั้งหมด${st.plant?" · "+st.plant:" · ทุกสถานที่"}</div><div class="num">${all.length} <small class="unit">${UNIT}</small></div><div class="bar big"><i style="width:${pct}%"></i></div><div class="donetxt">เสร็จ ${pct}%</div></section>
  <section class="card stat blue s3"><div class="lbl">${d<T?"ค้างอยู่":"กำลังดำเนินการ"}</div><div class="num">${pend} <small class="unit">${UNIT}</small></div><div class="sub">${PTY.map((t,k)=>t.s+" "+cnt(all.filter(x=>!x.done),k)+" "+UNIT).join(" · ")}</div></section>
  <section class="card stat mint s3"><div class="lbl">ทำแล้ว</div><div class="num">${done} <small class="unit">${UNIT}</small></div><div class="sub">มีวัน Install ตั้งแต่วันที่แผน</div></section>
  <section class="card s3"><h2>สถานที่ × ชนิด</h2>${mx}</section>
@@ -215,7 +230,7 @@ function pie(parts){const tot=parts.reduce((a,x)=>a+x.v,0),R=34,C=2*Math.PI*R;le
  return`<div class="pie"><svg viewBox="0 0 90 90" width="92" role="img" aria-label="สัดส่วน"><circle r="${R}" cx="45" cy="45" fill="none" stroke="var(--line)" stroke-width="22"/>${seg}</svg><ul class="leg">${parts.map(x=>`<li><i style="background:${x.c}"></i>${x.n} <b>${tot?Math.round(x.v/tot*100):0}%</b> <small>(${x.v})</small></li>`).join("")}</ul></div>`}
 function lists(items,off,L){return PTY.map((t,k)=>{
  const a=items.filter(it=>it.ty===k).map(it=>({p:it.p,tg:it.tg,d:it.d,lo:it.lo,s:it.done?"done":it.late?"late":"wait"})),b=off.filter(r=>typeOf(r)===k).map(r=>({p:r.p,tg:r.tg,d:r.d,lo:r.lo,s:"off"})),all=a.concat(b),dn=all.filter(x=>x.s==="done"||x.s==="off").length;
- const lab={done:"ทำแล้ว",late:"ค้าง",wait:"รอทำ",off:"นอกแผน"},cls={done:"ok",late:"over",wait:"soon",off:"ok"},dot={done:"var(--green)",late:"var(--coral)",wait:"var(--amber)",off:"var(--c2)"};
+ const lab={done:"Completed",late:"Pending",wait:"รอทำ",off:"นอกแผน"},cls={done:"ok",late:"over",wait:"soon",off:"ok"},dot={done:"var(--green)",late:"var(--coral)",wait:"var(--amber)",off:"var(--c2)"};
  return`<section class="card"><h2>${t.n}<small>ทำแล้ว ${dn}/${all.length}</small></h2>`+(all.length?all.map(x=>`<div class="lrow"><i class="dot" style="background:${dot[x.s]}"></i><b>${esc(x.tg||"–")}</b><span>${esc(x.d||"–")}</span><span class="m">${L?"":x.p+" · "}${esc(x.lo||"")}</span><span class="chip ${cls[x.s]}">${lab[x.s]}</span></div>`).join(""):'<div class="nil">ไม่มีรายการ</div>')+"</section>"}).join("")}
 function daily(){
  const d=st.dd,T=todayIso(),L=st.plant;
@@ -242,7 +257,7 @@ function yearly(){
  return`<div class="dcol"><section class="card"><div class="ptitle"><h2>Yearly</h2><div class="sel"><label>ปี<select id="ysel">${yrs.map(v=>`<option${v===y?" selected":""}>${v}</option>`).join("")}</select></label></div></div>
  <div class="rb" style="margin-top:14px"><div class="t">ความคืบหน้ารายปี ${y}</div><div class="s">ทำแล้ว ${D} จาก ${N} รายการที่ต้องทำภายในปี</div>${ring(N?D/N:0,(N?Math.round(D/N*100):0)+"%","var(--green)")}</div></section>
  <section class="card"><h2>แยกแต่ละสถานที่</h2>${rows.map(x=>`<div class="yb"><b>${x.p}</b><div class="bar"><i style="width:${x.pct}%"></i></div><span>${x.pct}% <small>(${x.dn}/${x.n})</small></span></div>`).join("")}</section>
- <section class="card"><h2>ปฏิทินงานสอบเทียบ ${y}<small>จำนวนรายการที่ทำต่อวัน</small></h2>${heat(y)}</section></div>`}
+ </div>`}  // ปฏิทินงานสอบเทียบ (heatmap) ถูกนำออกแล้ว: ถ้าอยากเอากลับ ให้เพิ่ม <section class="card"><h2>ปฏิทินงานสอบเทียบ ${y}</h2>${heat(y)}</section> ก่อน </div> นี้
 function dash(){
  const tb=[["both","ภาพรวม"],["day","รายวัน"],["year","รายปี"]].map(([v,l])=>`<button aria-pressed="${st.pane===v}" data-pane="${v}">${l}</button>`).join("");
  return`<div class="pills" role="group" aria-label="มุมมอง" style="display:inline-flex;margin-bottom:14px">${tb}</div><div class="dgrid${st.pane==="both"?"":" one"}">${st.pane!=="year"?daily():""}${st.pane!=="day"?yearly():""}</div>`}
