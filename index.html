@@ -195,13 +195,19 @@ function plan(){
  const cnt=(arr,ty)=>arr.filter(x=>x.ty===ty).length;
  const strip=ds.map(x=>{const n=PLANS.filter(y=>y.date===x).reduce((a,y)=>a+y.items.length,0);return`<button class="dchip${x===T?" today":""}" aria-pressed="${x===d}" data-d="${x}">${shortDate(x)}<small>${n} รายการ</small></button>`}).join("");
  const mx=`<table class="mx"><tr><th>สถานที่</th>${PTY.map(t=>`<th>${t.s}</th>`).join("")}<th>รวม</th></tr>${per.map(x=>`<tr class="pl" data-p="${x.p}"><td><b>${x.p}</b></td>${PTY.map((t,k)=>{const n=cnt(x.all,k);return`<td class="${n?"":"z"}">${n}</td>`}).join("")}<td>${x.all.length}</td></tr>`).join("")}</table>`;
+ // ===== "แผนรายสถานที่": สถานะอิงตามข้อมูลหลัก (ตารางอุปกรณ์) =====
+ // แสดงแค่ 2 สถานะ: Completed / Pending
+ //  - Completed = สถานะข้อมูลหลักเป็น "ในกำหนด" (r.s==="ok")
+ //  - Pending   = อย่างอื่นทั้งหมด (เกินกำหนด / ใกล้ครบกำหนด / ไม่มีกำหนด / ไม่พบในข้อมูลหลัก)
+ // อยากเปลี่ยนเงื่อนไข -> แก้ที่ฟังก์ชัน isCompleted ด้านล่างที่เดียว (เช่น ให้ "ใกล้ครบกำหนด" นับเป็น Completed ด้วย: ใช้ ["ok","soon"].includes(...))
+ const isCompleted=it=>!!(it.r&&it.r.s==="ok");
  const cards=shown.map(x=>{
-  const dn=x.items.filter(it=>it.done).length,pc=x.items.length?Math.round(dn/x.items.length*100):0;
+  const dn=x.items.filter(isCompleted).length,pc=x.items.length?Math.round(dn/x.items.length*100):0;
   if(!x.items.length)return`<details class="pc"><summary>${x.p}<small>${d===T?"ไม่มีแผนวันนี้":"ไม่มีแผนในวันที่เลือก"}</small></summary></details>`;
   const groups=PTY.map((t,k)=>{if(st.pty>=0&&st.pty!==k)return"";const g=x.items.filter(it=>it.ty===k);
-   return`<div class="tg"><span class="chip">${t.s}</span>${t.n}<small>${g.length} รายการ · ทำแล้ว ${g.filter(it=>it.done).length}</small></div>`+(g.length?`<div class="prow head"><span>#</span><span>Tag</span><span>รายละเอียด</span><span>ทำล่าสุด</span><span>ครบกำหนด</span><span>สถานะ</span></div>`+g.map(it=>{const r=it.r;
-    return`<div class="prow"><span class="n">${it.n}</span><b>${esc(it.tg)}</b><span>${esc(it.d||"–")}<span class="sm">${esc(it.lo||"")}${it.fl?" · ชั้น "+esc(it.fl):""}</span></span><span>${fmt(r&&r.in)}</span><span>${fmt(r&&r.nx)}${r&&r.nx?`<span class="sm">${dueText(r)}</span>`:""}</span>${it.done?'<span class="chip ok">Completed</span>':it.late?'<span class="chip over">Pending</span>':'<span class="chip soon">รอทำ</span>'}</div>`}).join(""):'<div class="nil">ไม่มีรายการ</div>')}).join("");
-  return`<details class="pc" open><summary>${x.p}<small>${x.items.length} รายการ · ทำแล้ว ${dn}</small><div class="bar"><i style="width:${pc}%"></i></div></summary>${groups}</details>`}).join("");
+   return`<div class="tg"><span class="chip">${t.s}</span>${t.n}<small>${g.length} รายการ · Completed ${g.filter(isCompleted).length}</small></div>`+(g.length?`<div class="prow head"><span>#</span><span>Tag</span><span>รายละเอียด</span><span>ทำล่าสุด</span><span>ครบกำหนด</span><span>สถานะ</span></div>`+g.map(it=>{const r=it.r;
+    return`<div class="prow"><span class="n">${it.n}</span><b>${esc(it.tg)}</b><span>${esc(it.d||"–")}<span class="sm">${esc(it.lo||"")}${it.fl?" · ชั้น "+esc(it.fl):""}</span></span><span>${fmt(r&&r.in)}</span><span>${fmt(r&&r.nx)}${r&&r.nx?`<span class="sm">${dueText(r)}</span>`:""}</span>${isCompleted(it)?'<span class="chip ok">Completed</span>':'<span class="chip over">Pending</span>'}</div>`}).join(""):'<div class="nil">ไม่มีรายการ</div>')}).join("");
+  return`<details class="pc" open><summary>${x.p}<small>${x.items.length} รายการ · Completed ${dn}</small><div class="bar"><i style="width:${pc}%"></i></div></summary>${groups}</details>`}).join("");
 // ================= หน้า "แผน" : การ์ดสรุปด้านบน 4 ใบ =================
  // วิธีแก้ไขเอง:
  //  - เปลี่ยนหน่วยนับ (ตัว)        -> แก้ค่า UNIT ด้านล่างที่เดียว มีผลทุกการ์ด
