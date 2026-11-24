@@ -73,6 +73,7 @@ svg.chart{width:100%;height:auto;display:block}svg text{fill:var(--mute);font:11
 .grp{margin:18px 0 4px;font-weight:600}.grp small{color:var(--mute);font-weight:400;margin-left:6px}
 .scroll{overflow-x:auto}.scroll .row{min-width:760px;grid-template-columns:110px 1.6fr 1fr 70px 110px 110px 100px}
 .empty{color:var(--mute);padding:24px 0;text-align:center}
+.note{background:#fff3cd;color:#664d03;border-radius:14px;padding:10px 14px;margin:0 0 14px;font-size:13.5px}
 [hidden]{display:none!important}
 .dgrid{display:grid;grid-template-columns:1.35fr 1fr;gap:16px;align-items:start}.dgrid.one{grid-template-columns:1fr}.dcol{display:flex;flex-direction:column;gap:16px;min-width:0}
 .ptitle{display:flex;align-items:center;gap:12px;flex-wrap:wrap}.ptitle h2{margin:0;font-size:18px}.ptitle small{color:var(--mute);font-weight:400;font-size:12.5px}
@@ -124,12 +125,17 @@ details.pc summary small{font-weight:400;color:var(--mute)}details.pc summary .b
 <main>
 <header><h1>NPP Calibration Tracker</h1><div class="pills" id="plants" role="group" aria-label="สถานที่"></div><div class="today" id="today"></div><button class="today" id="refresh" hidden>รีเฟรชข้อมูล</button><button class="today" id="logout" hidden style="background:var(--gray);color:var(--ink)">ออกจากระบบ</button></header>
 <div class="chips" id="types" role="group" aria-label="ชนิดอุปกรณ์"></div>
+<div id="note" class="note" hidden></div>
 <div id="view"></div>
 </main>
 </div>
 <script>
 let DATA=[];
-const PL=["NPP3","NPP4","NPP5","NPP6"];
+// ===== รายชื่อสถานที่ (โรงไฟฟ้า) =====
+// ค่าเริ่มต้นก่อนโหลดข้อมูล ; หลังโหลดแล้ว window.boot() จะอัปเดต PL จากข้อมูลจริงทุกสถานที่เอง
+// (เพิ่ม NPP8 ฯลฯ ในชีตแล้ว sync ก็จะขึ้นเอง ไม่ต้องมาแก้ตรงนี้)
+let PL=["NPP3","NPP4","NPP5","NPP6","NPP7"];
+const natural=(a,b)=>a.localeCompare(b,undefined,{numeric:true});   // เรียง NPP3, NPP4, ... NPP10 ให้ถูกลำดับ
 const TY=[{n:"Pressure transmitter",s:"PT",c:"--c1"},{n:"Pressure switch",s:"PS",c:"--c2"},{n:"Level",s:"LT",c:"--c3"},{n:"Temp",s:"TT",c:"--c4"}];
 const ST={over:"Pending",soon:"ใกล้ครบกำหนด",ok:"Completed",none:"ไม่มีกำหนด"};
 const now=new Date();now.setHours(0,0,0,0);
@@ -166,7 +172,7 @@ function area(a){
  return`<svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="จำนวนอุปกรณ์ที่ทำเสร็จรายปี">${g}<path d="${d} L${X(v.length-1)},${Y(0)} L${X(0)},${Y(0)}Z" fill="var(--green)" opacity=".18"/><path d="${d}" fill="none" stroke="var(--green)" stroke-width="2.5"/>${xl}</svg>`;
 }
 function stack(a){
- const W=300,H=190,B=24,T=10,tot=PL.map(p=>a.filter(r=>r.p===p).length),mx=Math.max(1,...tot),bw=36,gap=(W-4*bw)/5;
+ const W=300,H=190,B=24,T=10,tot=PL.map(p=>a.filter(r=>r.p===p).length),mx=Math.max(1,...tot),bw=Math.min(36,W/PL.length*.6),gap=(W-PL.length*bw)/(PL.length+1);
  return`<svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="จำนวนอุปกรณ์ตามสถานที่และชนิด">`+PL.map((p,i)=>{let y=H-B;const x=gap+i*(bw+gap);
   const seg=TY.map((t,k)=>{const n=a.filter(r=>r.p===p&&r.t===k).length,h=n/mx*(H-B-T);y-=h;return h?`<rect x="${x}" y="${y}" width="${bw}" height="${Math.max(h-1,1)}" rx="3" fill="var(${t.c})"><title>${p} ${t.n}: ${n}</title></rect>`:""}).join("");
   return seg+`<text x="${x+bw/2}" y="${H-6}" text-anchor="middle">${p}</text>`}).join("")+"</svg>";
@@ -285,7 +291,12 @@ document.addEventListener("click",e=>{const b=e.target.closest("button,tr.pl");i
  render()});
 document.addEventListener("change",e=>{const t=e.target;if(t.id==="dd"&&t.value)st.dd=t.value;else if(t.id==="dloc")st.plant=t.value;else if(t.id==="ysel")st.year=+t.value;else return;render()});
 addEventListener("hashchange",()=>{st.view=viewFromHash();render()});
-window.boot=(rows,plans)=>{DATA=rows;DATA.forEach(r=>r.s=status(r));IDX={};DATA.forEach(r=>{if(r.tg)IDX[r.p+"|"+r.tg]=r});PLANS=plans||[];st.date=null;st.dd=todayIso();st.view=viewFromHash();render()};
+window.boot=(rows,plans,plants)=>{DATA=rows;DATA.forEach(r=>r.s=status(r));IDX={};DATA.forEach(r=>{if(r.tg)IDX[r.p+"|"+r.tg]=r});PLANS=plans||[];
+ // รวมรายชื่อสถานที่จากทุกแหล่ง: รายชื่อใน Firestore + ที่พบในข้อมูลอุปกรณ์ + ที่พบในแผน
+ PL=[...new Set([...(plants||[]),...DATA.map(r=>r.p),...PLANS.map(x=>x.p)].filter(Boolean))].sort(natural);
+ if(!PL.length)PL=["NPP3","NPP4","NPP5","NPP6","NPP7"];
+ if(st.plant&&!PL.includes(st.plant))st.plant="";
+ st.date=null;st.dd=todayIso();st.view=viewFromHash();render()};
 </script>
 <script type="module">
 import{initializeApp}from"https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
@@ -293,23 +304,41 @@ import{getAuth,onAuthStateChanged,signInWithPopup,GoogleAuthProvider,signOut}fro
 import{getFirestore,collection,getDocs}from"https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
 const firebaseConfig={apiKey:"AIzaSyA3k_l43M1AlcESVfIg_88VwkCrMptKfyo",authDomain:"test-7d9c4.firebaseapp.com",databaseURL:"https://test-7d9c4-default-rtdb.asia-southeast1.firebasedatabase.app",projectId:"test-7d9c4",storageBucket:"test-7d9c4.firebasestorage.app",messagingSenderId:"947793602673",appId:"1:947793602673:web:76016a2387a656c0f4d3d0"};
 const app=initializeApp(firebaseConfig),auth=getAuth(app),db=getFirestore(app);
-const PLANTS=["NPP3","NPP4","NPP5","NPP6"],COLLS=["pressure_transmitters","pressure_switches","level_transmitters","temp_transmitters"];
-const CACHE="npp_calibration_cache_v2",TTL=30*60*1000,view=document.getElementById("view");
+// ===== รายชื่อสถานที่ที่จะดึงข้อมูล =====
+// ปกติอ่านรายชื่อจากคอลเลกชัน "plants" ใน Firestore อัตโนมัติ (ทุกสถานที่ที่สคริปต์ sync สร้างไว้)
+// ถ้าอ่านรายชื่อไม่ได้ (เช่น กฎความปลอดภัยไม่อนุญาตให้ list) จะใช้รายการสำรองนี้แทน -> เพิ่มสถานที่ใหม่ได้ที่นี่
+const FALLBACK_PLANTS=["NPP3","NPP4","NPP5","NPP6","NPP7"];
+const COLLS=["pressure_transmitters","pressure_switches","level_transmitters","temp_transmitters"];
+// TTL = อายุแคชในเบราว์เซอร์ (ตอนนี้ 6 ชม.) ในช่วงนี้ไม่ดึงข้อมูลใหม่ เพื่อไม่ให้โควตาอ่าน Firestore เต็ม ; กด "รีเฟรชข้อมูล" เพื่อบังคับดึงใหม่
+// เปลี่ยนเลขเวอร์ชันท้ายชื่อ CACHE (v3) เมื่อโครงสร้างข้อมูลเปลี่ยน เพื่อทิ้งแคชเก่า
+const CACHE="npp_calibration_cache_v3",TTL=6*60*60*1000,view=document.getElementById("view");
 const show=(h)=>{view.innerHTML=`<section class="card" style="max-width:460px;margin:40px auto;text-align:center">${h}</section>`};
 const iso=v=>v&&v.toDate?v.toDate().toISOString().slice(0,10):null;
 const KEYS={plant:"p",tag:"tg",description:"d",location:"lo",rangeMin:"mn",rangeMax:"mx",unit:"u",periodDays:"pe",uninstallDate:"un",installDate:"in",nextDueDate:"nx",maker:"mk",model:"md",remark:"rm"};
 function compact(x,t){const r={t};for(const k in KEYS){const v=x[k];if(v!==null&&v!==undefined)r[KEYS[k]]=/Date$/.test(k)?iso(v):v}return r}
+async function plantIds(){
+ try{const ids=(await getDocs(collection(db,"plants"))).docs.map(d=>d.id);return ids.length?ids:FALLBACK_PLANTS}
+ catch(e){return FALLBACK_PLANTS}
+}
 async function load(force){
- try{const c=JSON.parse(localStorage.getItem(CACHE)||"null");if(!force&&c&&Date.now()-c.t<TTL&&c.uid===auth.currentUser.uid)return c}catch(e){}
+ let c=null;
+ try{c=JSON.parse(localStorage.getItem(CACHE)||"null");if(c&&c.uid!==auth.currentUser.uid)c=null}catch(e){c=null}
+ if(!force&&c&&Date.now()-c.t<TTL)return c;
  const rows=[],plans=[];
- await Promise.all(PLANTS.flatMap(p=>COLLS.map(async(c,t)=>{(await getDocs(collection(db,"plants",p,c))).forEach(d=>rows.push(compact(d.data(),t)))})));
- await Promise.all(PLANTS.map(async p=>{(await getDocs(collection(db,"plants",p,"plan_days"))).forEach(d=>{const x=d.data();plans.push({p,date:d.id,items:x.items||[]})})}));
- try{localStorage.setItem(CACHE,JSON.stringify({t:Date.now(),uid:auth.currentUser.uid,rows,plans}))}catch(e){}
- return{rows,plans};
+ // ถ้าดึงข้อมูลใหม่ไม่ได้ (เช่น 429 โควตาเต็ม) แต่มีแคชเก่าอยู่ -> ใช้แคชเก่าแทน แล้วแจ้งเตือนด้านบน
+ try{
+  const plants=await plantIds();
+  await Promise.all(plants.flatMap(p=>COLLS.map(async(c,t)=>{(await getDocs(collection(db,"plants",p,c))).forEach(d=>rows.push(compact(d.data(),t)))})));
+  await Promise.all(plants.map(async p=>{(await getDocs(collection(db,"plants",p,"plan_days"))).forEach(d=>{const x=d.data();plans.push({p,date:d.id,items:x.items||[]})})}));
+  try{localStorage.setItem(CACHE,JSON.stringify({t:Date.now(),uid:auth.currentUser.uid,rows,plans,plants}))}catch(e){}
+  return{rows,plans,plants};
+ }catch(e){if(c)return{...c,stale:true};throw e}
 }
 async function start(force){
  show('<h2>กำลังโหลดข้อมูล…</h2>');
- try{const x=await load(force);window.boot(x.rows,x.plans)}
+ try{const x=await load(force);window.boot(x.rows,x.plans,x.plants);
+  // แถบแจ้งเตือนเมื่อใช้ข้อมูลแคชเก่า (โหลดใหม่ไม่ได้ เช่น โควตาเต็ม)
+  const n=document.getElementById("note");n.hidden=!x.stale;if(x.stale)n.textContent="โหลดข้อมูลใหม่ไม่ได้ (โควตาเต็ม/เชื่อมต่อไม่ได้) กำลังแสดงข้อมูลที่บันทึกไว้เมื่อ "+new Date(x.t).toLocaleString("th-TH")}
  catch(e){show(e.code==="permission-denied"?'<h2>บัญชีนี้ยังไม่มีสิทธิ์อ่านข้อมูล</h2><p>ลองออกจากระบบแล้วเข้าด้วยบัญชีที่ได้รับอนุญาต</p>':'<h2>โหลดข้อมูลไม่สำเร็จ</h2><p>'+(e.code||e.message)+'</p><button class="btn" id="retry">ลองอีกครั้ง</button>');const b=document.getElementById("retry");if(b)b.onclick=()=>start(true)}
 }
 const $=id=>document.getElementById(id);
