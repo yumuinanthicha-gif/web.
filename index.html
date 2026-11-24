@@ -31,21 +31,19 @@ h1{font-size:15px;font-weight:600;margin:0 auto 0 0}
 .chips button[aria-pressed="true"]{border-color:var(--ink);color:var(--ink);font-weight:500}
 .grid{display:grid;grid-template-columns:repeat(12,1fr);gap:16px}
 .card{background:var(--card);border-radius:24px;padding:20px;min-width:0}
-/* ===== ลูกเล่น Hover: เอาเมาส์ชี้การ์ดแล้วการ์ดนั้นขยาย + การ์ดอื่นหรี่ลง =====
+/* ===== ลูกเล่น Hover (เฉพาะการ์ดตัวเลขสรุป 3 ใบด้านบน) =====
+   ชี้การ์ดใบไหน -> ใบนั้นขยาย, การ์ดสรุปใบอื่นหรี่ลง ; การ์ดอื่นๆ ในหน้า (ตาราง, รายการ, ปุ่ม) ไม่ขยาย
    วิธีแก้เอง:
-   - ขยายมาก/น้อย      -> แก้ scale(1.04) ในกฎ ".card:hover" (1 = ไม่ขยาย)
-   - การ์ดกว้างเต็มแถว -> แก้ scale ใน ".card.s12:hover" (ใช้ค่าน้อยกว่า ไม่งั้นล้นขอบ)
-   - หรี่มาก/น้อย      -> แก้ brightness(.7) (1 = ไม่หรี่, 0 = ดำสนิท) และ opacity(.65)
-   - ความเร็ว          -> แก้ .25s ใน transition
-   - ปิดลูกเล่นทั้งหมด -> ลบบล็อกนี้ทิ้งทั้งก้อน (ถึงบรรทัดที่เขียนว่า "จบ Hover") */
+   - ขยายมาก/น้อย -> แก้ scale(1.05) (1 = ไม่ขยาย)
+   - หรี่มาก/น้อย  -> แก้ brightness(.7) และ opacity(.65)
+   - อยากให้การ์ดอื่นขยายด้วย -> เพิ่ม class ของการ์ดนั้นต่อท้าย .stat เช่น ".stat,.s4"
+   - ปิดทั้งหมด -> ลบบล็อกนี้ถึงบรรทัด "จบ Hover" */
 @media (hover:hover){
- .card{transition:transform .25s ease,filter .25s ease,opacity .25s ease,box-shadow .25s ease;position:relative}
- .card:hover{transform:scale(1.04);z-index:5;box-shadow:0 16px 36px rgba(0,0,0,.22)}
- .card.s12:hover,.card.dnav:hover{transform:scale(1.01)}
- /* การ์ดอื่นในหน้าเดียวกันที่ไม่ได้ถูกชี้ -> หรี่ลง (ใช้ :has จึงต้องเป็นเบราว์เซอร์รุ่นใหม่) */
- :is(.grid,.dgrid,.dcol):has(.card:hover) .card:not(:hover){filter:brightness(.7);opacity:.65}
+ .stat{transition:transform .25s ease,filter .25s ease,opacity .25s ease,box-shadow .25s ease;position:relative}
+ .stat:hover{transform:scale(1.05);z-index:5;box-shadow:0 16px 36px rgba(0,0,0,.22)}
+ .grid:has(.stat:hover) .stat:not(:hover){filter:brightness(.7);opacity:.65}
 }
-@media (prefers-reduced-motion:reduce){.card{transition:none}.card:hover{transform:none}}
+@media (prefers-reduced-motion:reduce){.stat{transition:none}.stat:hover{transform:none}}
 /* จบ Hover */
 .card h2{font-size:15px;font-weight:600;margin:0 0 12px}
 .s3{grid-column:span 3}.s4{grid-column:span 4}.s5{grid-column:span 5}.s6{grid-column:span 6}.s7{grid-column:span 7}.s8{grid-column:span 8}
